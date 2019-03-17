@@ -1,0 +1,136 @@
+body {
+	margin: 0;
+	padding: 0;
+	font-family: ³ª´®°íµñ, ¸¼Àº°íµñ, tahoma;
+}
+
+.default-m-p {
+	margin: 2%;
+	padding: 0;
+}
+
+.default-align {
+	text-align: center;
+	vertical-align: middle;
+}
+
+.main-title {
+	font-size: 32px;
+	font-weight: bold;
+}
+
+.sel-period {
+	text-align: right;
+	vertical-align: middle;
+	font-weight: bold;
+	padding-right: 2%;
+}
+
+.main-contents-title {
+	margin-top: 2%;
+	font-size: 24px;
+	font-weight: bold;
+	text-align: left;
+	vertical-align: middle;
+	padding-left: 2%;
+}
+
+.main-contents {
+	text-align: right;
+	vertical-align: middle;
+}
+
+table {
+	border-collapse: collapse;
+	margin-top: 1%;
+	width: 100%
+}
+
+thead>tr>th, tbody>tr>td {
+	border: solid 1px;
+}
+
+thead>tr>th {
+	background-color: efefef;
+}
+
+th, td {
+	height: 40px;
+	text-align: center;
+	vertical-align: middle;
+	padding-top: 4px;
+	font-size: 14px;
+	line-height: 20px;
+}
+
+tfoot {
+	border: 0;
+}
+
+a:link {
+	text-decoration: none;
+}
+
+.jira-issuetype {
+	width: 6%;
+}
+
+.jira-summary {
+	width: 24%;
+}
+
+.jira-worklog-full {
+	width: 15%;
+}
+
+.jira-worklog-author {
+	width: 5%;
+}
+
+.jira-worklog-startdate {
+	width: 5%;
+}
+
+.jira-worklog-timeworked {
+	width: 5%;
+}
+
+.jira-comment-full {
+	width: 15%;
+}
+
+.jira-comment-author {
+	width: 5%;
+}
+
+.jira-comment-updated {
+	width: 10%;
+}
+
+.jira-assignee {
+	width: 5%;
+}
+
+.jira-reporter {
+	width: 5%;
+}
+
+.jira-issuestatus {
+	width: 6%;
+}
+
+.jira-resolution {
+	width: 5%;
+}
+
+.jira-created {
+	width: 5%;
+}
+
+.jira-updated {
+	width: 5%;
+}
+
+.jira-duedate {
+	width: 5%;
+}
