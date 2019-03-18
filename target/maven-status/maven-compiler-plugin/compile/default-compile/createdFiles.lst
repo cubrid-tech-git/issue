@@ -1,7 +1,0 @@
-jira\dashboard\dao\RecentWeekIssuesDao.class
-jira\dashboard\dao\MyConnectionManager.class
-jira\util\paging\Paging.class
-jira\dashboard\service\RecentWeekIssueService.class
-jira\dashboard\vo\RecentWeekIssueVO.class
-jira\dashboard\vo\RecentWeekIssueWithCommentVO.class
-jira\dashboard\vo\RecentWeekIssueWithWorkLogVO.class
