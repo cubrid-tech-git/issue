@@ -236,7 +236,7 @@
 					</c_rt:choose>
 					<td>${techIssue.issuetype}</td>
 					<td style="text-align: left; padding-left: 8px">
-						<a href="http://www.cubrid.com:8888/browse/${techIssue.pkey}" target="_blank">${techIssue.summary}</a>
+						<a href="http://dev.cubrid.com:8888/browse/${techIssue.pkey}" target="_blank">${techIssue.summary}</a>
 					</td>
 					<td>${techIssue.author}</td>
 					<td>${techIssue.startdate}</td>
