@@ -1,58 +1,49 @@
 package jira.dashboard.dao;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 import jira.dashboard.vo.RecentWeekIssueWithCommentVO;
 import jira.dashboard.vo.RecentWeekIssueWithWorkLogVO;
 
-/**
- * 
- * @author HUN
- * 
- * Recent Week Issue page에서 사용될 Dao class
- *
- */
 public class RecentWeekIssuesDao {
-	private Connection conn;
-	private Statement stmt;
-	private ResultSet rs;
-	private List<RecentWeekIssueWithWorkLogVO> list;
-	private List<RecentWeekIssueWithCommentVO> commentList;
-
 	/**
-	 * @param period
-	 * @return int
-	 * 
-	 *         www.cubrid.com:8888(CUBRID, (구)RND, OFFICE) 에서 최근에 변경된 이슈의 개수를 가져옵니다.
+	 * '기술지원팀' 프로젝트 카테고리 중에서 최근에 변경된 이슈 개수 
 	 */
 	public int rowRWICount(String period) {
 		int result = 0;
 		
 		try {
-			Connection conn = MyConnectionManager.getTechJiraConnection();
+			String sql = "" +
+				" SELECT " +
+				"     /* rowRWICount */ " +
+				"     COUNT(*) " +
+				" FROM " +
+				"     jiraissue j " +
+				" WHERE " +
+				"     DATE(j.updated) >= DATE(subdate(now(), interval " + period + ")) " +
+				"     AND j.project IN ( " +
+				"         SELECT " +
+				"             p.id " +
+				"         FROM " +
+				"             project p " +
+				"             INNER JOIN nodeassociation n ON p.id = n.source_node_id " +
+				"         WHERE " +
+				"             n.sink_node_entity = 'ProjectCategory' " +
+				"             AND n.sink_node_id = (SELECT id FROM projectcategory WHERE cname = '기술지원팀') " +
+				"     ) ";
 			
-			Statement stmt = conn.createStatement();
+			PreparedStatement pstmt = MyConnectionManager.getRndTsJiraConnection().prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery();
 			
-            StringBuilder sql = new StringBuilder();
-            sql.append("/* rowRWICount */                                                     ".trim() + " ");
-            sql.append("SELECT COUNT(*)                                                       ".trim() + " ");
-            sql.append("FROM jiraissue j                                                      ".trim() + " ");
-            sql.append("WHERE DATE (updated) >= DATE (subdate(now(), INTERVAL " + period +")) ".trim() + " ");
-            
-            ResultSet rs = stmt.executeQuery(sql.toString());
-			
-			if(rs.next() && rs.last()) {
+			while (rs.next()) {
 				result = rs.getInt(1);
 			}
 			
 			System.out.println("rowRWICount(" + period + ") : " + result);
-			
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -61,58 +52,68 @@ public class RecentWeekIssuesDao {
 	}
 	
 	/**
-	 * @param startRecord
-	 * @param endRecord
-	 * @param period
-	 * @return
-	 * 
-	 * 		www.cubrid.com:8888(CUBRID, (구)RND, OFFICE) 에서 최근에 변경된 이슈 목록을 페이징 해서 가져옵니다.
-	 * 
+	 * '기술지원팀' 프로젝트 카테고리 중에서 최근에 변경된 이슈 목록 
 	 */
 	public List<RecentWeekIssueWithWorkLogVO> selectPagingResult(int offset, int row_count, String period) {
-		list = new ArrayList<RecentWeekIssueWithWorkLogVO>();
+		List<RecentWeekIssueWithWorkLogVO> list = new ArrayList<RecentWeekIssueWithWorkLogVO>();
 		
 		try {
-			Connection conn = MyConnectionManager.getTechJiraConnection();
+			String sql = "" +
+				" SELECT " +
+				"     /* selectPagingResult */ " +
+				"     i.pname AS PNAME, " +
+				"     CONCAT(p.pkey, '-', j.issuenum) AS PKEY, " +
+				"     j.summary AS SUMMARY, " +
+				"     (SELECT display_name FROM cwd_user WHERE user_name = j.assignee) AS ASSIGNEE, " +
+				"     (SELECT display_name FROM cwd_user WHERE user_name = j.reporter) AS REPORTER, " +
+				"     (SELECT pname FROM issuestatus WHERE id = j.issuestatus) AS ISSUESTATUS, " +
+				"     (SELECT pname FROM resolution WHERE id = j.resolution) AS RESOLUTION, " +
+				"     DATE_FORMAT(j.created, '%y-%m-%d') AS CREATED, " +
+				"     DATE_FORMAT(j.updated, '%y-%m-%d') AS UPDATED, " +
+				"     DATE_FORMAT(j.duedate, '%y-%m-%d') AS DUEDATE, " +
+				"     (SELECT display_name FROM cwd_user WHERE user_name = w.worklog_author) AS WORKLOG_AUTHOR, " +
+				"     DATE_FORMAT(w.worklog_startdate, '%y-%m-%d</br>%H:%i') AS WORKLOG_STARTDATE, " +
+				"     w.worklog_timeworked AS WORKLOG_TIMEWORKED " +
+				" FROM " +
+				"     jiraissue j " +
+				"     INNER JOIN project p ON p.id = j.project " +
+				"     LEFT OUTER JOIN issuetype i ON i.id = j.issuetype " +
+				"     LEFT OUTER JOIN ( " +
+				"         SELECT " +
+				"             issueid, " +
+				"             max(author) AS WORKLOG_AUTHOR, " +
+				"             max(startdate) AS WORKLOG_startdate, " +
+				"             sum(timeworked) AS WORKLOG_timeworked " +
+				"         FROM " +
+				"             worklog " +
+				"         WHERE " +
+				"             DATE(startdate) >= DATE(subdate(now(), INTERVAL " + period + ")) " +
+				"         GROUP BY " +
+				"             issueid " +
+				"     ) w ON j.id = w.issueid " +
+				" WHERE " +
+				"     DATE(j.updated) >= DATE(subdate(now(), INTERVAL " + period + ")) " +
+				"     AND j.project IN ( " +
+				"         SELECT " +
+				"             p.id " +
+				"         FROM " +
+				"             project p " +
+				"             INNER JOIN nodeassociation n ON p.id = n.source_node_id " +
+				"         WHERE " +
+				"             n.sink_node_entity = 'ProjectCategory' " +
+				"             AND n.sink_node_id = (SELECT id FROM projectcategory WHERE cname = '기술지원팀') " +
+				"     ) " +
+				" ORDER BY " +
+				"     UPDATED DESC, " +
+				"     WORKLOG_AUTHOR DESC " +
+				" LIMIT ?, ? ";
 			
-			StringBuilder sql = new StringBuilder();
-            sql.append("/* selectPagingResult */                                                                                        ".trim() + " ");
-            sql.append("SELECT it.pname AS PNAME                                                                                        ".trim() + " ");
-            sql.append("    ,ji.pkey AS PKEY                                                                                            ".trim() + " ");
-            sql.append("    ,ji.summary AS SUMMARY                                                                                      ".trim() + " ");
-            sql.append("    ,(SELECT cu.display_name FROM cwd_user cu WHERE cu.user_name = ji.assignee LIMIT 1) AS ASSIGNEE             ".trim() + " ");
-            sql.append("    ,(SELECT cu.display_name FROM cwd_user cu WHERE cu.user_name = ji.reporter LIMIT 1) AS REPORTER             ".trim() + " ");
-            sql.append("    ,(SELECT ist.pname FROM issuestatus ist WHERE ist.id = ji.issuestatus LIMIT 1) AS ISSUESTATUS               ".trim() + " ");
-            sql.append("    ,(SELECT rs.pname FROM resolution rs WHERE rs.id = ji.resolution LIMIT 1) AS RESOLUTION                     ".trim() + " ");
-            sql.append("    ,DATE_FORMAT(ji.created, '%y-%m-%d') AS CREATED                                                             ".trim() + " ");
-            sql.append("    ,DATE_FORMAT(ji.updated, '%y-%m-%d') AS UPDATED                                                             ".trim() + " ");
-            sql.append("    ,DATE_FORMAT(ji.duedate, '%y-%m-%d') AS DUEDATE                                                             ".trim() + " ");
-            sql.append("    ,(SELECT cu.display_name FROM cwd_user cu WHERE cu.user_name = T1.worklog_author LIMIT 1) AS WORKLOG_AUTHOR ".trim() + " ");
-            sql.append("    ,DATE_FORMAT(T1.worklog_startdate, '%y-%m-%d</br>%H:%i') AS WORKLOG_STARTDATE                               ".trim() + " ");
-            sql.append("    ,T1.worklog_timeworked AS WORKLOG_TIMEWORKED                                                                ".trim() + " ");
-            sql.append("FROM jiraissue ji                                                                                               ".trim() + " ");
-            sql.append("    LEFT OUTER JOIN issuetype it ON it.id = ji.issuetype                                                        ".trim() + " ");
-            sql.append("    LEFT OUTER JOIN (                                                                                           ".trim() + " ");
-            sql.append("        SELECT wl.issueid                                                                                       ".trim() + " ");
-            sql.append("            ,max(wl.author) AS WORKLOG_AUTHOR                                                                   ".trim() + " ");
-            sql.append("            ,max(wl.startdate) AS WORKLOG_startdate                                                             ".trim() + " ");
-            sql.append("            ,sum(wl.timeworked) AS WORKLOG_timeworked                                                           ".trim() + " ");
-            sql.append("        FROM worklog wl                                                                                         ".trim() + " ");
-            sql.append("        WHERE DATE(wl.startdate) >= DATE(subdate(now(), INTERVAL " + period + "))                               ".trim() + " ");
-            sql.append("        GROUP BY wl.issueid                                                                                     ".trim() + " ");
-            sql.append("    ) T1 ON ji.id = T1.issueid                                                                                  ".trim() + " ");
-            sql.append("WHERE DATE(ji.updated) >= DATE(subdate(now(), INTERVAL " + period + "))                                         ".trim() + " ");
-            sql.append("ORDER BY UPDATED DESC, WORKLOG_AUTHOR DESC                                                                      ".trim() + " ");
-            sql.append("LIMIT ?, ?                                                                                                      ".trim() + " ");
-            
-			PreparedStatement pstmt = conn.prepareStatement(sql.toString());		
-			
+			PreparedStatement pstmt = MyConnectionManager.getRndTsJiraConnection().prepareStatement(sql);
 			pstmt.setInt(1, offset);
 			pstmt.setInt(2, row_count);
-			
-			ResultSet rs = pstmt.executeQuery();
-			
-			while(rs.next()) {
+            ResultSet rs = pstmt.executeQuery();
+            
+			while (rs.next()) {
 				RecentWeekIssueWithWorkLogVO vo = new RecentWeekIssueWithWorkLogVO();
 				vo.setIssuetype(rs.getString("PNAME"));
 				vo.setPkey(rs.getString("PKEY"));
@@ -137,33 +138,39 @@ public class RecentWeekIssuesDao {
 	}
 	
 	/**
-	 * @param period
-	 * @return
-	 * 
-	 * 		jira.cubrid.com:8888(RND) 에서 최근에 변경된 이슈의 개수를 가져옵니다.
+	 * '연구소' 프로젝트 카테고리 중에서 최근에 변경된 이슈 개수
 	 */
 	public int getEtcCount(String period) {
 		int result = 0;
-
+		
 		try {
-			Connection conn = MyConnectionManager.getRndJiraConnection();
+			String sql = "" +
+				" SELECT " +
+				"     /* getEtcCount */ " +
+				"     COUNT(*) " +
+				" FROM " +
+				"     jiraissue j " +
+				" WHERE " +
+				"     DATE(j.updated) >= DATE(subdate(now(), interval " + period + ")) " +
+				"     AND j.project IN ( " +
+				"         SELECT " +
+				"             p.id " +
+				"         FROM " +
+				"             project p " +
+				"             INNER JOIN nodeassociation n ON p.id = n.source_node_id " +
+				"         WHERE " +
+				"             n.sink_node_entity = 'ProjectCategory' " +
+				"             AND n.sink_node_id = (SELECT id FROM projectcategory WHERE cname = '연구소') " +
+				"     ) ";
 			
-			Statement stmt = conn.createStatement();
+			PreparedStatement pstmt = MyConnectionManager.getRndTsJiraConnection().prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery();
 			
-            StringBuilder sql = new StringBuilder();
-            sql.append("/* getEtcCount */                                                     ".trim() + " ");
-            sql.append("SELECT COUNT(*)                                                       ".trim() + " ");
-            sql.append("FROM jiraissue j                                                      ".trim() + " ");
-            sql.append("WHERE DATE (updated) >= DATE (subdate(now(), INTERVAL " + period +")) ".trim() + " ");
-            
-            ResultSet rs = stmt.executeQuery(sql.toString());
-			
-			if(rs.next() && rs.last()) {
+			while (rs.next()) {
 				result = rs.getInt(1);
 			}
 			
 			System.out.println("getEtcCount(" + period + ") : " + result);
-			
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -172,56 +179,65 @@ public class RecentWeekIssuesDao {
 	}
 	
 	/**
-	 * @param startRecord
-	 * @param endRecord
-	 * @param period
-	 * @return
-	 * 
-	 * 		jira.cubrid.com:8888(RND) 에서 최근에 변경된 이슈 목록을 페이징 해서 가져옵니다.
-	 * 
+	 * '연구소' 프로젝트 카테고리 중에서 최근에 변경된 이슈 목록 
 	 */
 	public List<RecentWeekIssueWithCommentVO> selectEtcResult(int offset, int row_count, String period) {
-		commentList = new ArrayList<RecentWeekIssueWithCommentVO>();
+		List<RecentWeekIssueWithCommentVO> list = new ArrayList<RecentWeekIssueWithCommentVO>();
 		
 		try {
-			Connection conn = MyConnectionManager.getRndJiraConnection();
+			String sql = "" +
+				" SELECT " +
+				"     /* selectEtcResult */ " +
+				"     i.pname AS PNAME, " +
+				"     CONCAT(p.pkey, '-', j.issuenum) AS PKEY, " +
+				"     j.summary AS SUMMARY, " +
+				"     (SELECT display_name FROM cwd_user WHERE user_name = j.assignee) AS ASSIGNEE, " +
+				"     (SELECT display_name FROM cwd_user WHERE user_name = j.reporter) AS REPORTER, " +
+				"     (SELECT pname FROM issuestatus WHERE id = j.issuestatus) AS ISSUESTATUS, " +
+				"     (SELECT pname FROM resolution WHERE id = j.resolution) AS RESOLUTION, " +
+				"     DATE_FORMAT(j.created, '%y-%m-%d') AS CREATED, " +
+				"     DATE_FORMAT(j.updated, '%y-%m-%d') AS UPDATED, " +
+				"     DATE_FORMAT(j.duedate, '%y-%m-%d') AS DUEDATE, " +
+				"     (SELECT display_name FROM cwd_user WHERE user_name = a.comment_author) AS COMMENT_AUTHOR, " +
+				"     DATE_FORMAT(a.comment_updated, '%y-%m-%d %T') AS COMMENT_UPDATED " +
+				" FROM jiraissue j " +
+				"     INNER JOIN project p ON p.id = j.project " +
+				"     LEFT OUTER JOIN issuetype i ON i.id = j.issuetype " +
+				"     LEFT OUTER JOIN ( " +
+				"         SELECT " +
+				"             issueid, " +
+				"             max(author) AS comment_author, " +
+				"             max(updated) AS comment_updated " +
+				"         FROM " +
+				"             jiraaction " +
+				"         WHERE " +
+				"             DATE(updated) >= DATE(subdate(now(), INTERVAL " + period +")) " +
+				"         GROUP BY " +
+				"             issueid " +
+				"     ) a ON j.id = a.issueid " +
+				" WHERE " +
+				"     DATE(j.updated) >= DATE(subdate(now(), INTERVAL " + period +")) " +
+				"     AND j.project IN ( " +
+				"         SELECT " +
+				"             p.id " +
+				"         FROM " +
+				"             project p " +
+				"             INNER JOIN nodeassociation n ON p.id = n.source_node_id " +
+				"         WHERE " +
+				"             n.sink_node_entity = 'ProjectCategory' " +
+				"             AND n.sink_node_id = (SELECT id FROM projectcategory WHERE cname = '연구소') " +
+				"     ) " +
+				" ORDER BY " +
+				"     UPDATED DESC, " +
+				"     COMMENT_AUTHOR DESC " +
+				" LIMIT ?, ? ";
 			
-            StringBuilder sql = new StringBuilder();
-            sql.append("/* selectEtcResult */                                                                                           ".trim() + " ");
-            sql.append("SELECT it.pname AS PNAME                                                                                        ".trim() + " ");
-            sql.append("    ,CONCAT(pj.pkey, '-', ji.issuenum) AS PKEY                                                                  ".trim() + " ");
-            sql.append("    ,ji.summary AS SUMMARY                                                                                      ".trim() + " ");
-            sql.append("    ,(SELECT cu.display_name FROM cwd_user cu WHERE cu.user_name = ji.assignee LIMIT 1) AS ASSIGNEE             ".trim() + " ");
-            sql.append("    ,(SELECT cu.display_name FROM cwd_user cu WHERE cu.user_name = ji.reporter LIMIT 1) AS REPORTER             ".trim() + " ");
-            sql.append("    ,(SELECT ist.pname FROM issuestatus ist WHERE ist.id = ji.issuestatus LIMIT 1) AS ISSUESTATUS               ".trim() + " ");
-            sql.append("    ,(SELECT rs.pname FROM resolution rs WHERE rs.id = ji.resolution LIMIT 1) AS RESOLUTION                     ".trim() + " ");
-            sql.append("    ,DATE_FORMAT(ji.created, '%y-%m-%d') AS CREATED                                                             ".trim() + " ");
-            sql.append("    ,DATE_FORMAT(ji.updated, '%y-%m-%d') AS UPDATED                                                             ".trim() + " ");
-            sql.append("    ,DATE_FORMAT(ji.duedate, '%y-%m-%d') AS DUEDATE                                                             ".trim() + " ");
-            sql.append("    ,(SELECT cu.display_name FROM cwd_user cu WHERE cu.user_name = T1.comment_author LIMIT 1) AS COMMENT_AUTHOR ".trim() + " ");
-            sql.append("    ,DATE_FORMAT(T1.comment_updated, '%y-%m-%d %T') AS COMMENT_UPDATED                                          ".trim() + " ");
-            sql.append("FROM jiraissue ji                                                                                               ".trim() + " ");
-            sql.append("    INNER JOIN project pj ON pj.id = ji.project                                                                 ".trim() + " ");
-            sql.append("    LEFT OUTER JOIN issuetype it ON it.id = ji.issuetype                                                        ".trim() + " ");
-            sql.append("    LEFT OUTER JOIN (                                                                                           ".trim() + " ");
-            sql.append("        SELECT ja.issueid                                                                                       ".trim() + " ");
-            sql.append("            ,max(ja.author) AS comment_author                                                                   ".trim() + " ");
-            sql.append("            ,max(ja.updated) AS comment_updated                                                                 ".trim() + " ");
-            sql.append("        FROM jiraaction ja                                                                                      ".trim() + " ");
-            sql.append("        WHERE DATE(ja.updated) >= DATE(subdate(now(), INTERVAL " + period + "))                                 ".trim() + " ");
-            sql.append("        GROUP BY ja.issueid                                                                                     ".trim() + " ");
-            sql.append("    ) T1 ON ji.id = T1.issueid                                                                                  ".trim() + " ");
-            sql.append("WHERE DATE(ji.updated) >= DATE(subdate(now(), INTERVAL " + period + "))                                         ".trim() + " ");
-            sql.append("ORDER BY UPDATED DESC, COMMENT_AUTHOR DESC                                                                      ".trim() + " ");
-            sql.append("LIMIT ?, ?                                                                                                      ".trim() + " ");
-            
-            PreparedStatement pstmt = conn.prepareStatement(sql.toString());        
-            pstmt.setInt(1, offset);
-            pstmt.setInt(2, row_count);
-            
+			PreparedStatement pstmt = MyConnectionManager.getRndTsJiraConnection().prepareStatement(sql);
+			pstmt.setInt(1, offset);
+			pstmt.setInt(2, row_count);
             ResultSet rs = pstmt.executeQuery();
-            
-			while(rs.next()) {
+			
+			while (rs.next()) {
 				RecentWeekIssueWithCommentVO vo = new RecentWeekIssueWithCommentVO();
 				vo.setIssuetype(rs.getString("PNAME"));
 				vo.setPkey(rs.getString("PKEY"));
@@ -235,13 +251,13 @@ public class RecentWeekIssuesDao {
 				vo.setDuedate(rs.getString("DUEDATE"));
 				vo.setComment_author(rs.getString("COMMENT_AUTHOR"));
 				vo.setComment_updated(rs.getString("COMMENT_UPDATED"));
-				commentList.add(vo);
+				list.add(vo);
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 		
-		return commentList;
+		return list;
 	}
 	
 	public static String worklogToHumanReadable(int worklogTimeworked) {

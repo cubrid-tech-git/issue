@@ -7,7 +7,6 @@ package jira.dashboard.vo;
  *         recent week issue 와 worklog의 데이터도 같이 저장하기 위해 만든 VO 클래스
  */
 public class RecentWeekIssueWithWorkLogVO extends RecentWeekIssueVO {
-
 	private String author;
 	private String startdate;
 	private String timeworked;

@@ -236,7 +236,7 @@
 					</c_rt:choose>
 					<td>${techIssue.issuetype}</td>
 					<td style="text-align: left; padding-left: 8px">
-						<a href="http://dev.cubrid.com:8888/browse/${techIssue.pkey}" target="_blank">${techIssue.summary}</a>
+						<a href="http://www.cubrid.com:8888/browse/${techIssue.pkey}" target="_blank">${techIssue.summary}</a>
 					</td>
 					<td>${techIssue.author}</td>
 					<td>${techIssue.startdate}</td>
@@ -330,7 +330,7 @@
 					</c_rt:choose>
 					<td>${rndIssue.issuetype}</td>
 					<td style="text-align: left; padding-left: 8px">
-						<a href="http://jira.cubrid.com:8888/browse/${rndIssue.pkey}" target="_blank">${rndIssue.summary}</a>
+						<a href="http://www.cubrid.com:8888/browse/${rndIssue.pkey}" target="_blank">${rndIssue.summary}</a>
 					</td>
 					<td>${rndIssue.comment_author}</td>
 					<td colspan="2">${rndIssue.comment_updated}</td>
